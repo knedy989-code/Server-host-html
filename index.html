@@ -248,7 +248,7 @@
 <div class="container">
     <div class="card">
         <h1>LocalHost Dashboard</h1>
-        <p class="subtitle">Launches environments into Safari or compiles into installable App Packages</p>
+        <p class="subtitle">Launches environments into Safari or compiles assets for Ksign signing</p>
 
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('upload-panel', this)">File Drop</button>
@@ -274,8 +274,8 @@
                 Virtual Server: <code id="domain-display" style="color: var(--accent);">domain.app</code>
             </div>
             <div class="action-button-group">
-                <button id="safari-breaker" class="open-safari-btn">🌐 Open in Safari Browser</button>
-                <button id="ipa-compiler" class="download-ipa-btn">📦 Download as Installable App (.ipa)</button>
+                <button id="safari-breaker" class="open-safari-btn">🌐 Open Live in Safari</button>
+                <button id="ipa-compiler" class="download-ipa-btn">📦 Prepare Web-Bundle Asset</button>
             </div>
         </div>
     </div>
@@ -365,25 +365,17 @@
         if (e.dataTransfer.files.length) handleFileUpload(e.dataTransfer.files[0]);
     });
 
-    // Client-side execution script wrapper to build unsigned system binaries internally
-    function compileIpaPackage(htmlCode, filename) {
-        // Formulates a basic shell structure mapped cleanly into standard iOS configurations
-        const configPlist = `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundleIdentifier</key><string>com.localhost.${filename}</string><key>CFBundleName</key><string>${filename}</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleShortVersionString</key><string>1.0</string></dict></plist>`;
-        
-        // Simulates native packaging structure directly out of web memory blobs
-        const combinedBlob = new Blob([
-            `/* LocalHost iOS Native IPA Package Distribution Payload */\n`,
-            `/* Config.plist Structure: */\n${configPlist}\n\n`,
-            `/* App Payload Binary Stream Contents: */\n${htmlCode}`
-        ], { type: 'application/octet-stream' });
-        
-        const downloadUrl = URL.createObjectURL(combinedBlob);
+    function prepareWebAsset(htmlCode, filename) {
+        // Packages the code into a clean, standalone file template for shell assembly
+        const blob = new Blob([htmlCode], { type: 'text/html' });
+        const downloadUrl = URL.createObjectURL(blob);
         const tracker = document.createElement('a');
         tracker.href = downloadUrl;
-        tracker.download = `${filename}.ipa`;
+        tracker.download = `index.html`;
         document.body.appendChild(tracker);
         tracker.click();
         document.body.removeChild(tracker);
+        alert("Asset ready! Compress this index.html into a .zip file to pass into your cloud compiler for Ksign signing.");
     }
 
     function deployToVirtualServer(htmlContent) {
@@ -402,10 +394,7 @@
         }
 
         safariBreaker.onclick = function() { window.open(dynamicUrl, '_blank'); };
-        
-        // Hooks up the native compiler trigger button
-        ipaCompiler.onclick = function() { compileIpaPackage(htmlContent, serverId); };
-        
+        ipaCompiler.onclick = function() { prepareWebAsset(htmlContent, serverId); };
         statusContainer.style.display = 'block';
     }
 
