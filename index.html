@@ -2,14 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- iPad Viewport optimization & Standalone Mode configuration -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="LocalHost">
-    <title>iPad Offline Server Host</title>
+    <title>iPad Native Safari Host</title>
     
-    <!-- Inline Manifest alternative for easy iPad distribution -->
     <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Offline%20Server%22,%22short_name%22:%22LocalHost%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%230f172a%22,%22theme_color%22:%22%230f172a%22}">
 
     <style>
@@ -17,88 +15,152 @@
             --bg-color: #0f172a;
             --card-bg: #1e293b;
             --accent: #38bdf8;
+            --accent-hover: #7dd3fc;
             --text: #f8fafc;
             --text-dim: #94a3b8;
+            --border: #334155;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg-color);
             color: var(--text);
             margin: 0;
-            padding: 0;
+            padding: 20px;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            /* Prevents rubber-banding bounce gestures on iPad Safari */
-            overflow: hidden; 
+            box-sizing: border-box;
         }
 
         .container {
             width: 100%;
-            max-width: 550px;
-            padding: 20px;
-            box-sizing: border-box;
+            max-width: 700px;
         }
 
         .card {
             background-color: var(--card-bg);
             border-radius: 20px;
-            padding: 35px;
+            padding: 30px;
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-            text-align: center;
-            border: 1px solid #334155;
+            border: 1px solid var(--border);
         }
 
         h1 {
             font-size: 1.8rem;
-            margin-top: 0;
-            margin-bottom: 8px;
+            margin: 0 0 5px 0;
             background: linear-gradient(to right, #38bdf8, #818cf8);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            text-align: center;
         }
 
-        p {
+        p.subtitle {
             color: var(--text-dim);
             font-size: 0.95rem;
-            margin-bottom: 25px;
-            line-height: 1.4;
+            margin: 0 0 25px 0;
+            text-align: center;
+        }
+
+        .tabs {
+            display: flex;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 4px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            padding: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--card-bg);
+            color: var(--accent);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
         }
 
         .drop-zone {
             border: 2px dashed #475569;
-            border-radius: 16px;
-            padding: 50px 20px;
+            border-radius: 14px;
+            padding: 60px 20px;
+            text-align: center;
             cursor: pointer;
-            background: rgba(30, 41, 59, 0.4);
-            transition: all 0.25s ease-in-out;
-            -webkit-tap-highlight-color: transparent;
+            background: rgba(30, 41, 59, 0.3);
+            transition: all 0.25s ease;
         }
 
-        .drop-zone:active, .drop-zone.drag-over {
+        .drop-zone.drag-over {
             border-color: var(--accent);
             background: rgba(56, 189, 248, 0.08);
         }
 
-        .drop-zone-prompt {
+        #file-input { display: none; }
+
+        .editor-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 220px;
+            background: #0f172a;
+            color: #38bdf8;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'SF Mono', SFMono-Regular, Consolas, monospace;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+            resize: none;
+            outline: none;
+        }
+
+        textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .launch-btn {
+            background: var(--accent);
+            color: #0f172a;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-weight: bold;
             font-size: 1rem;
-            color: var(--text-dim);
+            cursor: pointer;
+            transition: background 0.2s;
         }
 
-        .drop-zone-prompt span {
-            color: var(--accent);
-            font-weight: 600;
-        }
-
-        #file-input {
-            display: none;
+        .launch-btn:active {
+            background: var(--accent-hover);
         }
 
         .status-container {
             margin-top: 25px;
             display: none;
+            text-align: center;
             animation: fadeIn 0.3s ease;
         }
 
@@ -107,23 +169,25 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .success-link {
+        .open-safari-btn {
             display: inline-block;
-            margin-top: 15px;
-            color: #4ade80;
+            margin-top: 12px;
+            color: #0f172a;
+            background: #4ade80;
             text-decoration: none;
-            font-weight: 600;
+            font-weight: bold;
             font-size: 1.1rem;
-            word-break: break-all;
-            background: rgba(74, 222, 128, 0.08);
-            padding: 12px 24px;
-            border-radius: 10px;
-            border: 1px solid rgba(74, 222, 128, 0.15);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            padding: 14px 28px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(74, 222, 128, 0.3);
+            transition: transform 0.1s;
         }
 
-        .success-link:active {
-            background: rgba(74, 222, 128, 0.18);
+        .open-safari-btn:active {
+            transform: scale(0.97);
+            background: #22c55e;
         }
     </style>
 </head>
@@ -132,50 +196,56 @@
 <div class="container">
     <div class="card">
         <h1>Local iPad Server</h1>
-        <p>Tap below to select an <code>HTML</code> file from your Files app to launch a local server instance.</p>
+        <p class="subtitle">Launches your custom hosted server tab natively inside Safari browser</p>
 
-        <div class="drop-zone" id="drop-zone">
-            <div class="drop-zone-prompt">
-                Tap to <span>Browse iPad Files</span> or Drop File
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('upload-panel', this)">File Drop</button>
+            <button class="tab-btn" onclick="switchTab('code-panel', this)">Code Editor</button>
+        </div>
+
+        <div id="upload-panel" class="panel active">
+            <div class="drop-zone" id="drop-zone">
+                <div style="color: var(--text-dim);">Tap to <span>Browse Files</span> or Drop HTML File</div>
+                <input type="file" id="file-input" accept=".html">
             </div>
-            <input type="file" id="file-input" accept=".html">
+        </div>
+
+        <div id="code-panel" class="panel">
+            <div class="editor-container">
+                <textarea id="code-editor" placeholder="<!DOCTYPE html>&#10;<html>&#10;<body>&#10;  <h1>Hello inside real Safari!</h1>&#10;</body>&#10;</html>"></textarea>
+                <button class="launch-btn" onclick="launchFromEditor()">🚀 Compile Code</button>
+            </div>
         </div>
 
         <div class="status-container" id="status-container">
-            <div style="color: var(--text-dim); font-size: 0.9rem;">🚀 Host Active! Open domain link:</div>
-            <a href="#" id="server-link" class="success-link" target="_blank"></a>
+            <div style="color: var(--text-dim); font-size: 0.95rem; margin-bottom: 5px;">
+                Server built as <code id="domain-display" style="color: var(--accent);">domain.app</code>!
+            </div>
+            <!-- Crucial button target setup to force breakout into actual Safari -->
+            <button id="safari-breaker" class="open-safari-btn">🌐 Open in Safari Browser</button>
         </div>
     </div>
 </div>
 
 <script>
-    // Inline Blob Service Worker Generation to bypass file domain restrictions on iPad
+    // 1. Core Service Worker Routing String
     const swCode = `
-        const CACHE_NAME = 'ipad-server-v1';
         const virtualServers = {};
-
-        self.addEventListener('install', (e) => self.skipWaiting());
-        self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
-
-        self.addEventListener('message', (e) => {
+        self.addEventListener('install', e => self.skipWaiting());
+        self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+        self.addEventListener('message', e => {
             if (e.data && e.data.type === 'HOST_FILE') {
                 virtualServers[e.data.id] = e.data.content;
             }
         });
-
-        self.addEventListener('fetch', (e) => {
+        self.addEventListener('fetch', e => {
             const url = e.request.url;
             if (url.includes('/virtual-host/') && url.endsWith('.app')) {
                 const segments = url.split('/');
                 const fileId = segments[segments.length - 1].replace('.app', '');
                 const hostedContent = virtualServers[fileId];
-
                 if (hostedContent) {
-                    e.respondWith(
-                        new Response(hostedContent, {
-                            headers: { 'Content-Type': 'text/html' }
-                        })
-                    );
+                    e.respondWith(new Response(hostedContent, { headers: { 'Content-Type': 'text/html' } }));
                     return;
                 }
             }
@@ -183,67 +253,82 @@
         });
     `;
 
-    // Inject and register the dynamic service worker string
+    let swActive = false;
     if ('serviceWorker' in navigator) {
         const blob = new Blob([swCode], { type: 'application/javascript' });
-        const swUrl = URL.createObjectURL(blob);
-        navigator.serviceWorker.register(swUrl, { scope: './' })
-            .then(() => console.log('Dynamic PWA Worker Ready'))
-            .catch(err => console.error('PWA Worker Init Failed:', err));
+        navigator.serviceWorker.register(URL.createObjectURL(blob), { scope: './' })
+            .then(() => { if (navigator.serviceWorker.controller) swActive = true; })
+            .catch(() => {});
+    }
+
+    function switchTab(panelId, btn) {
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(panelId).classList.add('active');
+        btn.classList.add('active');
     }
 
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
     const statusContainer = document.getElementById('status-container');
-    const serverLink = document.getElementById('server-link');
+    const safariBreaker = document.getElementById('safari-breaker');
+    const domainDisplay = document.getElementById('domain-display');
+    const codeEditor = document.getElementById('code-editor');
 
     dropZone.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length) handleFile(e.target.files[0]);
+        if (e.target.files.length) handleFileUpload(e.target.files[0]);
     });
 
-    // Handle File processing
-    function handleFile(file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const fileContent = e.target.result;
-            // Generate a cleanly formatted random application subdomain string
-            const serverId = 'site-' + Math.random().toString(36).substring(2, 7);
+    window.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    window.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    window.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        if (e.dataTransfer.files.length) handleFileUpload(e.dataTransfer.files[0]);
+    });
 
-            if (navigator.serviceWorker.controller) {
-                navigator.serviceWorker.controller.postMessage({
-                    type: 'HOST_FILE',
-                    id: serverId,
-                    content: fileContent
-                });
+    // 2. Escape Logic Function
+    function deployToVirtualServer(htmlContent) {
+        const serverId = 'site-' + Math.random().toString(36).substring(2, 7);
+        let dynamicUrl = '';
 
-                // Formulate the virtualized app execution pathway
-                const basePath = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
-                const virtualLink = basePath + `virtual-host/${serverId}.app`;
+        if (swActive && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({
+                type: 'HOST_FILE',
+                id: serverId,
+                content: htmlContent
+            });
+            const basePath = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            dynamicUrl = basePath + `virtual-host/${serverId}.app`;
+            domainDisplay.innerText = `${serverId}.app`;
+        } else {
+            // Blob execution architecture fallback
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            dynamicUrl = URL.createObjectURL(blob);
+            domainDisplay.innerText = `${serverId}.local.app`;
+        }
 
-                statusContainer.style.display = 'block';
-                serverLink.href = virtualLink;
-                serverLink.innerText = `${serverId}.app`;
-            } else {
-                // Quick fallback structure if worker initialization is waiting
-                const blob = new Blob([fileContent], { type: 'text/html' });
-                const localBlobUrl = URL.createObjectURL(blob);
-                statusContainer.style.display = 'block';
-                serverLink.href = localBlobUrl;
-                serverLink.innerText = `${serverId}.local.app`;
-            }
+        // Apply a specialized direct event trigger to break out of the PWA engine sandbox shell
+        safariBreaker.onclick = function() {
+            // Setting target to _blank inside an explicit click block forces iOS to pop open native Safari
+            window.open(dynamicUrl, '_blank');
         };
+
+        statusContainer.style.display = 'block';
+    }
+
+    function handleFileUpload(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => deployToVirtualServer(e.target.result);
         reader.readAsText(file);
     }
 
-    // Support standard Drag & Drop gestures if using iPadOS Split View / Stage Manager
-    window.addEventListener('dragover', e => e.preventDefault());
-    window.addEventListener('drop', e => {
-        e.preventDefault();
-        if (e.dataTransfer.files.length) {
-            handleFile(e.dataTransfer.files[0]);
-        }
-    });
+    function launchFromEditor() {
+        const codeValue = codeEditor.value.trim();
+        if (!codeValue) return alert("Type or paste some HTML code first!");
+        deployToVirtualServer(codeValue);
+    }
 </script>
 
 </body>
