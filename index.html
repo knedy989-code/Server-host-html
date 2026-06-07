@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- iPad Viewport optimization & Standalone Mode configuration -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LocalHost">
+    <title>iPad Offline Server Host</title>
+    
+    <!-- Inline Manifest alternative for easy iPad distribution -->
+    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Offline%20Server%22,%22short_name%22:%22LocalHost%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%230f172a%22,%22theme_color%22:%22%230f172a%22}">
+
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #38bdf8;
+            --text: #f8fafc;
+            --text-dim: #94a3b8;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            /* Prevents rubber-banding bounce gestures on iPad Safari */
+            overflow: hidden; 
+        }
+
+        .container {
+            width: 100%;
+            max-width: 550px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 20px;
+            padding: 35px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            border: 1px solid #334155;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-top: 0;
+            margin-bottom: 8px;
+            background: linear-gradient(to right, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+            margin-bottom: 25px;
+            line-height: 1.4;
+        }
+
+        .drop-zone {
+            border: 2px dashed #475569;
+            border-radius: 16px;
+            padding: 50px 20px;
+            cursor: pointer;
+            background: rgba(30, 41, 59, 0.4);
+            transition: all 0.25s ease-in-out;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .drop-zone:active, .drop-zone.drag-over {
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.08);
+        }
+
+        .drop-zone-prompt {
+            font-size: 1rem;
+            color: var(--text-dim);
+        }
+
+        .drop-zone-prompt span {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .status-container {
+            margin-top: 25px;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .success-link {
+            display: inline-block;
+            margin-top: 15px;
+            color: #4ade80;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            word-break: break-all;
+            background: rgba(74, 222, 128, 0.08);
+            padding: 12px 24px;
+            border-radius: 10px;
+            border: 1px solid rgba(74, 222, 128, 0.15);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .success-link:active {
+            background: rgba(74, 222, 128, 0.18);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h1>Local iPad Server</h1>
+        <p>Tap below to select an <code>HTML</code> file from your Files app to launch a local server instance.</p>
+
+        <div class="drop-zone" id="drop-zone">
+            <div class="drop-zone-prompt">
+                Tap to <span>Browse iPad Files</span> or Drop File
+            </div>
+            <input type="file" id="file-input" accept=".html">
+        </div>
+
+        <div class="status-container" id="status-container">
+            <div style="color: var(--text-dim); font-size: 0.9rem;">🚀 Host Active! Open domain link:</div>
+            <a href="#" id="server-link" class="success-link" target="_blank"></a>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inline Blob Service Worker Generation to bypass file domain restrictions on iPad
+    const swCode = `
+        const CACHE_NAME = 'ipad-server-v1';
+        const virtualServers = {};
+
+        self.addEventListener('install', (e) => self.skipWaiting());
+        self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+
+        self.addEventListener('message', (e) => {
+            if (e.data && e.data.type === 'HOST_FILE') {
+                virtualServers[e.data.id] = e.data.content;
+            }
+        });
+
+        self.addEventListener('fetch', (e) => {
+            const url = e.request.url;
+            if (url.includes('/virtual-host/') && url.endsWith('.app')) {
+                const segments = url.split('/');
+                const fileId = segments[segments.length - 1].replace('.app', '');
+                const hostedContent = virtualServers[fileId];
+
+                if (hostedContent) {
+                    e.respondWith(
+                        new Response(hostedContent, {
+                            headers: { 'Content-Type': 'text/html' }
+                        })
+                    );
+                    return;
+                }
+            }
+            e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+        });
+    `;
+
+    // Inject and register the dynamic service worker string
+    if ('serviceWorker' in navigator) {
+        const blob = new Blob([swCode], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+        navigator.serviceWorker.register(swUrl, { scope: './' })
+            .then(() => console.log('Dynamic PWA Worker Ready'))
+            .catch(err => console.error('PWA Worker Init Failed:', err));
+    }
+
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const statusContainer = document.getElementById('status-container');
+    const serverLink = document.getElementById('server-link');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    // Handle File processing
+    function handleFile(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const fileContent = e.target.result;
+            // Generate a cleanly formatted random application subdomain string
+            const serverId = 'site-' + Math.random().toString(36).substring(2, 7);
+
+            if (navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'HOST_FILE',
+                    id: serverId,
+                    content: fileContent
+                });
+
+                // Formulate the virtualized app execution pathway
+                const basePath = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+                const virtualLink = basePath + `virtual-host/${serverId}.app`;
+
+                statusContainer.style.display = 'block';
+                serverLink.href = virtualLink;
+                serverLink.innerText = `${serverId}.app`;
+            } else {
+                // Quick fallback structure if worker initialization is waiting
+                const blob = new Blob([fileContent], { type: 'text/html' });
+                const localBlobUrl = URL.createObjectURL(blob);
+                statusContainer.style.display = 'block';
+                serverLink.href = localBlobUrl;
+                serverLink.innerText = `${serverId}.local.app`;
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // Support standard Drag & Drop gestures if using iPadOS Split View / Stage Manager
+    window.addEventListener('dragover', e => e.preventDefault());
+    window.addEventListener('drop', e => {
+        e.preventDefault();
+        if (e.dataTransfer.files.length) {
+            handleFile(e.dataTransfer.files[0]);
+        }
+    });
+</script>
+
+</body>
+</html>
